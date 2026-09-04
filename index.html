@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="수산물 회수정보를 키워드와 조치상태로 빠르게 검색합니다.">
+  <title>수산물 회수정보 검색</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --navy: #073b5c;
+      --blue: #087ca7;
+      --pale: #eef8fb;
+      --line: #cbdde5;
+      --text: #17242b;
+      --muted: #556970;
+      --white: #fff;
+      --danger: #a52a2a;
+      --shadow: 0 8px 24px rgba(7, 59, 92, .09);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--text);
+      background: #f5f9fa;
+      font-family: system-ui, -apple-system, "Segoe UI", "Noto Sans KR", sans-serif;
+      line-height: 1.55;
+    }
+    header {
+      color: var(--white);
+      background: linear-gradient(125deg, var(--navy), var(--blue));
+      padding: 42px 20px 72px;
+    }
+    .wrap { width: min(1120px, calc(100% - 32px)); margin-inline: auto; }
+    h1 { margin: 0 0 8px; font-size: clamp(1.8rem, 5vw, 2.7rem); }
+    header p { margin: 0; opacity: .9; }
+    main { margin-top: -38px; padding-bottom: 56px; }
+    .search-panel {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(170px, 240px);
+      gap: 14px;
+      padding: 20px;
+      background: var(--white);
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+    }
+    label { display: block; margin-bottom: 6px; font-weight: 700; }
+    input, select {
+      width: 100%; min-height: 48px; padding: 10px 13px;
+      color: var(--text); background: var(--white);
+      border: 1px solid #9eb9c5; border-radius: 8px; font: inherit;
+    }
+    input:focus, select:focus { outline: 3px solid rgba(8, 124, 167, .22); border-color: var(--blue); }
+    .summary { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin: 28px 2px 14px; }
+    #result-count { margin: 0; font-size: 1.25rem; }
+    .hint { color: var(--muted); font-size: .9rem; }
+    .cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .card { padding: 21px; background: var(--white); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 2px 8px rgba(7, 59, 92, .04); }
+    .card-head { display: flex; justify-content: space-between; align-items: start; gap: 12px; margin-bottom: 16px; }
+    .card h3 { margin: 0; color: var(--navy); font-size: 1.2rem; }
+    .status { flex: none; padding: 4px 10px; border-radius: 999px; color: var(--navy); background: #dff2f7; font-weight: 700; font-size: .85rem; }
+    .status[data-status="회수중"] { color: #842414; background: #ffe8df; }
+    dl { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 8px 12px; margin: 0; }
+    dt { color: var(--muted); font-weight: 700; }
+    dd { min-width: 0; margin: 0; overflow-wrap: anywhere; }
+    .notice { padding: 36px 20px; text-align: center; color: var(--muted); background: var(--white); border: 1px dashed var(--line); border-radius: 12px; }
+    .notice.error { color: var(--danger); }
+    .safety { margin-top: 44px; }
+    .safety h2 { margin-bottom: 6px; color: var(--navy); }
+    .image-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 16px; }
+    .image-grid img { display: block; width: 100%; height: auto; border-radius: 10px; box-shadow: var(--shadow); }
+    footer { padding: 24px 16px; color: var(--muted); text-align: center; border-top: 1px solid var(--line); }
+    @media (max-width: 760px) {
+      .search-panel, .cards { grid-template-columns: 1fr; }
+      .image-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .summary { align-items: start; flex-direction: column; gap: 2px; }
+    }
+    @media (max-width: 420px) { .image-grid { grid-template-columns: 1fr; } dl { grid-template-columns: 78px minmax(0, 1fr); } }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <h1>수산물 회수정보 검색</h1>
+      <p>제품명, 제조사, 회수사유 등 공개된 회수정보를 한 번에 확인하세요.</p>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="search-panel" aria-label="회수정보 검색 조건">
+      <div>
+        <label for="keyword">키워드 검색</label>
+        <input id="keyword" type="search" placeholder="8개 전체 항목에서 검색" autocomplete="off">
+      </div>
+      <div>
+        <label for="status-filter">조치상태</label>
+        <select id="status-filter">
+          <option value="">전체</option>
+        </select>
+      </div>
+    </section>
+
+    <div class="summary" aria-live="polite">
+      <h2 id="result-count">결과 0건</h2>
+      <span class="hint">키워드는 띄어쓰기와 관계없이 부분일치로 검색됩니다.</span>
+    </div>
+    <section id="results" class="cards" aria-label="회수정보 검색 결과">
+      <div class="notice">회수정보를 불러오는 중입니다.</div>
+    </section>
+
+    <section class="safety" aria-labelledby="safety-title">
+      <h2 id="safety-title">수산물 안전안내</h2>
+      <p>안전한 수산물 이용을 위한 안내사항입니다.</p>
+      <div class="image-grid">
+        <img src="이미지/수산물안전_카드1.png" alt="수산물 안전안내 카드 1" loading="lazy">
+        <img src="이미지/수산물안전_카드2.png" alt="수산물 안전안내 카드 2" loading="lazy">
+        <img src="이미지/수산물안전_카드3.png" alt="수산물 안전안내 카드 3" loading="lazy">
+        <img src="이미지/수산물안전_카드4.png" alt="수산물 안전안내 카드 4" loading="lazy">
+      </div>
+    </section>
+  </main>
+
+  <footer>본 페이지의 정보는 제공된 회수정보 JSON을 기준으로 표시됩니다.</footer>
+
+  <script>
+    const FIELDS = ['회수ID', '등록일', '품목', '제조사', '회수사유', '조치상태', '판매지역', '담당기관'];
+    let recallData = [];
+
+    const keywordInput = document.querySelector('#keyword');
+    const statusFilter = document.querySelector('#status-filter');
+    const resultCount = document.querySelector('#result-count');
+    const results = document.querySelector('#results');
+
+    function normalized(value) {
+      return String(value ?? '').toLocaleLowerCase('ko-KR').replace(/\s+/g, '');
+    }
+
+    function createCard(item) {
+      const article = document.createElement('article');
+      article.className = 'card';
+
+      const head = document.createElement('div');
+      head.className = 'card-head';
+      const title = document.createElement('h3');
+      title.textContent = `${item.품목 ?? '품목 미상'} · ${item.회수ID ?? ''}`;
+      const badge = document.createElement('span');
+      badge.className = 'status';
+      badge.dataset.status = item.조치상태 ?? '';
+      badge.textContent = item.조치상태 ?? '-';
+      head.append(title, badge);
+
+      const list = document.createElement('dl');
+      FIELDS.forEach((field) => {
+        const term = document.createElement('dt');
+        term.textContent = field;
+        const detail = document.createElement('dd');
+        detail.textContent = item[field] ?? '-';
+        list.append(term, detail);
+      });
+      article.append(head, list);
+      return article;
+    }
+
+    function render() {
+      const query = normalized(keywordInput.value);
+      const selectedStatus = statusFilter.value;
+      const filtered = recallData.filter((item) => {
+        const keywordMatches = !query || FIELDS.some((field) => normalized(item[field]).includes(query));
+        const statusMatches = !selectedStatus || item.조치상태 === selectedStatus;
+        return keywordMatches && statusMatches;
+      });
+
+      resultCount.textContent = `결과 ${filtered.length}건`;
+      results.replaceChildren();
+      if (!filtered.length) {
+        const empty = document.createElement('div');
+        empty.className = 'notice';
+        empty.textContent = '검색 조건에 맞는 회수정보가 없습니다.';
+        results.append(empty);
+        return;
+      }
+      results.append(...filtered.map(createCard));
+    }
+
+    async function loadData() {
+      try {
+        const response = await fetch('./수산물_회수정보.json');
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        if (!Array.isArray(data)) throw new Error('JSON 최상위 값이 배열이 아닙니다.');
+        recallData = data;
+
+        [...new Set(data.map((item) => item.조치상태).filter(Boolean))]
+          .sort((a, b) => a.localeCompare(b, 'ko'))
+          .forEach((status) => {
+            const option = document.createElement('option');
+            option.value = status;
+            option.textContent = status;
+            statusFilter.append(option);
+          });
+        render();
+      } catch (error) {
+        resultCount.textContent = '결과 0건';
+        results.innerHTML = '<div class="notice error">회수정보를 불러오지 못했습니다. 웹 서버 또는 GitHub Pages에서 페이지를 열어 주세요.</div>';
+        console.error(error);
+      }
+    }
+
+    keywordInput.addEventListener('input', render);
+    statusFilter.addEventListener('change', render);
+    loadData();
+  </script>
+</body>
+</html>
